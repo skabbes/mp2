@@ -39,7 +39,7 @@ pid_t launchIntroducer(int m, int port){
 
     if( pid == 0 ){
         // launch listener process
-        execlp("./introducer", "./introducer", mString, portString, (char *)0 );
+        execlp("./node", "./node", mString, "0", portString, (char *)0 );
     } 
 
     return pid;

@@ -1,53 +1,91 @@
+// c++ libs
 #include <iostream>
 #include <string>
 #include <vector>
 #include <sstream>
 
+// c libs
 #include <cstdio>
 #include <cstdlib>
 
 #include <arpa/inet.h>
 
+// for sleep function
 #include "socket.h"
-
+#include "sha1.h"
+#include "messages.h"
 
 using namespace std;
 
 // function definitions
 int main(int argc, char ** argv);
-void * thread_conn_handler(void * arg);
 
-// global variables definitions for this node
+// global variables definitions
 int m;
 int id;
-int port;
-
-// vector of files
-// vector finger table
+char * port;
 
 void * thread_conn_handler(void * arg){
-    int socket = *((int *)arg);
+    int socket = *((int*)arg);
     free(arg);
+    int command = readint(socket);
 
-    // do stuff with the socket
+    if( command == ADD_NODE){
+      cout << "NODE " << id << " got ADD_NODE";
+       int size = readint(socket);
+       for(int i=0; i<size; i++){
+          cout << " " << readint(socket);
+       }
+       cout << endl;
+    }
+    else if( command == ADD_FILE){
+      string filename = readstring(socket);
+      string ipaddr = readstring(socket);
+      cout << "Node " << id << " got ADD_FILE " << filename << " " << ipaddr << endl;
+    }
+    else if( command == DEL_FILE){
+      cout << "Node " << id << " got DEL_FILE " << readstring(socket)  << endl;
+    }
+    else if( command == FIND_FILE){
+      cout << "Node " << id << " got FIND_FILE " << readstring(socket)  << endl;
+    }
+    else if( command == GET_TABLE){
+      cout << "Node " << id << " got GET_TABLE " <<  readint(socket) << endl;
+    }
+    else if( command == QUIT){
+      cout << "Node " << id << " got QUIT" << endl;
+    }
 
+    // stop reading from socket, but keep tryingn to send data
+    shutdown(socket, 1);
     return NULL;
 }
 
 int main(int argc, char ** argv){
-    if( argc != 5){
-       cerr << "Usage: " << argv[0] << " <m> <id> <introducer-host> <introducer-port>" << endl;
+
+    if( argc != 4 && argc != 6){
+       cerr << "Usage: " << argv[0] << " <m> <id> <port> [<introducer-host> <introducer-port>]" << endl;
        return EXIT_FAILURE;
     }
 
     m = atoi(argv[1]);
     id = atoi(argv[2]);
-    char * introducer_host = argv[3];
-    char * introducer_port = argv[4];
+    port = argv[3];
 
-    // we don't care what port we bind on, just pick an open one
-    int server = setup_server("0", &port);
+    char * introducer_host = "localhost";
+    char * introducer_port = "0";
 
+    if( argc == 6 ){
+       introducer_host = argv[4];
+       introducer_port = argv[5];
+    } else {
+      // I am the introducer
+    }
+
+
+    int server = setup_server(port, NULL);
+
+    // run code for introducer here
     socklen_t sin_size;
     struct sockaddr_storage their_addr;
     char s[INET6_ADDRSTRLEN];
@@ -69,7 +107,7 @@ int main(int argc, char ** argv){
         }
 
         inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-        cout << "Node got connection from " << s << endl;
+        cout << "Node " << id << " got connection from " << s << endl;
 
         // prepare argument for thread
         int * arg = (int *) malloc( sizeof(int) );
@@ -84,5 +122,5 @@ int main(int argc, char ** argv){
 
     // free resources for detached attribute
     pthread_attr_destroy(&DetachedAttr);
-    return 0;
+    return EXIT_SUCCESS;
 }

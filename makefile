@@ -3,9 +3,6 @@ CFLAGS = -g -Wall -O0
 
 LDFLAGS = -g -lpthread
 
-INTRODUCER = introducer 
-INTRODUCER_OBJ  = introducer.o socket.o sha1.o
-
 LISTENER = listener 
 LISTENER_OBJ = listener.o socket.o
 
@@ -13,7 +10,7 @@ CHORD_SYS = chord_sys
 CHORD_SYS_OBJ = chord_sys.o
 
 NODE = node
-NODE_OBJ = node.o socket.o
+NODE_OBJ = node.o socket.o sha1.o
 
 all: $(INTRODUCER) $(LISTENER) $(CHORD_SYS) $(NODE)
 
