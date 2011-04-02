@@ -10,7 +10,7 @@ CHORD_SYS = chord_sys
 CHORD_SYS_OBJ = chord_sys.o
 
 NODE = node
-NODE_OBJ = node.o socket.o sha1.o
+NODE_OBJ = node.o socket.o sha1.o node_class.o
 
 all: $(INTRODUCER) $(LISTENER) $(CHORD_SYS) $(NODE)
 

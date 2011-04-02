@@ -15,6 +15,10 @@ string readstring(int s);
 int sendstring(int s, string str);
 
 void *get_in_addr(struct sockaddr *sa);
+
+int setup_server(int port, int * port_num);
 int setup_server(const char * port, int * port_num);
+
+int setup_client(const char * hostname, int port);
 int setup_client(const char * hostname, const char * port);
 #endif

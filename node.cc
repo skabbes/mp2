@@ -10,10 +10,10 @@
 
 #include <arpa/inet.h>
 
-// for sleep function
 #include "socket.h"
 #include "sha1.h"
 #include "messages.h"
+#include "node_class.h"
 
 using namespace std;
 
@@ -23,7 +23,61 @@ int main(int argc, char ** argv);
 // global variables definitions
 int m;
 int id;
-char * port;
+int port;
+
+// finger table
+vector<Node> ft;
+
+vector<string> files;
+vector<string> ipaddrs;
+
+Node next;
+Node prev;
+
+bool between(int first, int second, int test){
+   if( first >= second ){
+      return test > first || test < second;
+   }
+   return test > first && test < second;
+}
+
+Node closestFinger(int queryId){
+   for(int i=m-1;i>=0;i--){
+      if( ft[i].id == queryId ){
+         return ft[i];
+      }
+      if( between(ft[i].id, id, queryId) ){
+         return ft[i];
+      }
+   }
+
+   // throw exception?
+   int x = 10 / 0;
+   return ft[0];
+}
+
+
+pid_t launchNode(int m, int id){
+    pid_t pid = fork();
+
+    char mString[6] = {0};
+    sprintf(mString, "%d", m);
+
+    char idString[32] = {0};
+    sprintf(idString, "%d", id);
+
+    char portString[] = "0";
+
+    char introducerPortString[32] = {0};
+    sprintf(introducerPortString, "%d", port);
+
+    if( pid == 0 ){
+        // launch listener process
+        execlp("./node", "./node", mString, idString, portString, introducerPortString, (char *)0 );
+    } 
+
+    return pid;
+}
 
 void * thread_conn_handler(void * arg){
     int socket = *((int*)arg);
@@ -34,7 +88,9 @@ void * thread_conn_handler(void * arg){
       cout << "NODE " << id << " got ADD_NODE";
        int size = readint(socket);
        for(int i=0; i<size; i++){
-          cout << " " << readint(socket);
+          int id = readint(socket);
+          cout << " " << id;
+          launchNode(m, id);
        }
        cout << endl;
     }
@@ -52,6 +108,20 @@ void * thread_conn_handler(void * arg){
     else if( command == GET_TABLE){
       cout << "Node " << id << " got GET_TABLE " <<  readint(socket) << endl;
     }
+    else if( command == FIND_SUCCESSOR ){
+
+      int queryId = readint(socket);
+
+      cout << "Node " << id << " got FIND SUCCESSOR TO " << queryId << endl;
+
+      Node closest = closestFinger(queryId);
+      if( closest.id != id ){
+         closest = closest.findSuccessorTo(queryId);
+      }
+
+      sendint(socket, closest.id);
+      sendint(socket, closest.port);
+    }
     else if( command == QUIT){
       cout << "Node " << id << " got QUIT" << endl;
     }
@@ -63,27 +133,38 @@ void * thread_conn_handler(void * arg){
 
 int main(int argc, char ** argv){
 
-    if( argc != 4 && argc != 6){
-       cerr << "Usage: " << argv[0] << " <m> <id> <port> [<introducer-host> <introducer-port>]" << endl;
+    if( argc != 4 && argc != 5){
+       cerr << "Usage: " << argv[0] << " <m> <id> <port> [<introducer-port>]" << endl;
        return EXIT_FAILURE;
     }
-
+    
+    // grab parameters
     m = atoi(argv[1]);
     id = atoi(argv[2]);
-    port = argv[3];
+    port = atoi(argv[3]);
 
-    char * introducer_host = "localhost";
-    char * introducer_port = "0";
+    int introducer_port = 0;
+    if( argc == 5 ){
+       introducer_port = atoi(argv[4]);
+    } 
 
-    if( argc == 6 ){
-       introducer_host = argv[4];
-       introducer_port = argv[5];
-    } else {
-      // I am the introducer
+    // initialize the next and prev nodes
+    next = Node(id, port);
+    prev = Node(id, port);
+
+    if( id != 0 ){
+       Node introducer(0, introducer_port);
+       next = introducer.findSuccessorTo(id);
+       cout << "Successor to " << id << " is " << next.id << " on port " << next.port << endl;
     }
 
+    // initialize finger table to self
+    for(int i=0;i<m;i++){
+       ft.push_back(next);
+    }
 
-    int server = setup_server(port, NULL);
+    // if port == 0, we get the new port number back as an output param
+    int server = setup_server(port, &port);
 
     // run code for introducer here
     socklen_t sin_size;

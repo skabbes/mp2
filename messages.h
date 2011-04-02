@@ -6,6 +6,7 @@ enum {
     DEL_FILE,
     FIND_FILE,
     GET_TABLE,
-    QUIT
+    QUIT,
+    FIND_SUCCESSOR
 };
 #endif

@@ -110,6 +110,13 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+
+int setup_server(int port, int * port_num){
+   stringstream ss (stringstream::in | stringstream::out);
+   ss << port;
+   return setup_server(ss.str().c_str(), port_num);
+}
+
 /*
  * Shamelessly taken from Beej's Guide For Network Programming
  * http://beej.us/guide/bgnet/output/html/multipage/clientserver.html
@@ -177,6 +184,12 @@ int setup_server(const char * port, int * port_num){
 		exit(1);
 	}
    return server;
+}
+
+int setup_client(const char * hostname, int port){
+   stringstream ss (stringstream::in | stringstream::out);
+   ss << port;
+   return setup_client(hostname, ss.str().c_str());
 }
 
 /*
