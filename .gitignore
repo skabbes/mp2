@@ -3,3 +3,4 @@ listener
 node
 chord_sys
 introducer
+.nfs*
