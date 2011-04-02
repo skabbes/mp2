@@ -13,6 +13,7 @@
 // for sleep function
 #include "socket.h"
 #include "sha1.h"
+#include "messages.h"
 
 using namespace std;
 
@@ -24,7 +25,38 @@ int m;
 char * port;
 
 void * thread_conn_handler(void * arg){
+    int socket = *((int*)arg);
     free(arg);
+    int command = readint(socket);
+
+    if( command == ADD_NODE){
+      cout << "Introducer got ADD_NODE";
+       int size = readint(socket);
+       for(int i=0; i<size; i++){
+          cout << " " << readint(socket);
+       }
+       cout << endl;
+    }
+    else if( command == ADD_FILE){
+      string filename = readstring(socket);
+      string ipaddr = readstring(socket);
+      cout << "Introducer got ADD_FILE " << filename << " " << ipaddr << endl;
+    }
+    else if( command == DEL_FILE){
+      cout << "Introducer got DEL_FILE " << readstring(socket)  << endl;
+    }
+    else if( command == FIND_FILE){
+      cout << "Introducer got FIND_FILE " << readstring(socket)  << endl;
+    }
+    else if( command == GET_TABLE){
+      cout << "Introducer got GET_TABLE " <<  readint(socket) << endl;
+    }
+    else if( command == QUIT){
+      cout << "Introducer got QUIT" << endl;
+    }
+
+    // stop reading from socket, but keep tryingn to send data
+    shutdown(socket, 1);
     return NULL;
 }
 

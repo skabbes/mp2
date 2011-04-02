@@ -4,3 +4,4 @@ node
 chord_sys
 introducer
 .nfs*
+*.swp

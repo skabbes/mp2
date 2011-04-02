@@ -6,8 +6,10 @@
 // for sleep function
 #include <cstdlib>
 #include <unistd.h>
+#include <sys/socket.h>
 
 #include "socket.h"
+#include "messages.h"
 
 using namespace std;
 
@@ -57,11 +59,11 @@ bool processCommand(stringstream & is){
 
     if( command == "ADD_NODE" ){
         vector<int> ids;
-        while( is ){
-            int id;
+        while( !is.eof() ){
+            int id = -1;
             is >> id;
-            if( !is.eof() ){
-                ids.push_back(id);
+            if( id  != -1 ){
+               ids.push_back(id);
             }
         }
         addNode(ids);
@@ -97,25 +99,62 @@ bool processCommand(stringstream & is){
 }
 
 void addNode(vector<int> ids){
-    cout << "ADD_NODE called" << endl;
+    cout << "ADD_NODE called with";
+    for(unsigned int i=0;i< ids.size();i++){
+       cout << " " << ids[i];
+    }
+    cout << endl;
+
+    int socket = setup_client(host, port);
+    sendint(socket, ADD_NODE);
+    sendint(socket, ids.size() );
+
+    for(unsigned int i=0; i<ids.size(); i++){
+       sendint(socket, ids[i]);
+    }
+
+    shutdown(socket, 1);
 }
 
 void addFile(string filename, string ip){
-    cout << "ADD_FILE called" << endl;
+    cout << "ADD_FILE called with " << filename << ", " << ip << endl;
+
+    int socket = setup_client(host, port);
+    sendint(socket, ADD_FILE);
+
+    sendstring(socket, filename);
+    sendstring(socket, ip);
+
+    shutdown(socket, 1);
 }
 
 void delFile(string filename){
-    cout << "DEL_FILE called" << endl;
+    cout << "DEL_FILE called with " << filename << endl;
+    int socket = setup_client(host, port);
+    sendint(socket, DEL_FILE);
+    sendstring(socket, filename);
+    shutdown(socket, 1);
 }
 
 void findFile(string filename){
-    cout << "FIND_FILE called" << endl;
+    cout << "FIND_FILE called with " << filename << endl;
+    int socket = setup_client(host, port);
+    sendint(socket, FIND_FILE);
+    sendstring(socket, filename);
+    shutdown(socket, 1);
 }
 
 void getTable(int id){
-    cout << "GET_TABLE called" << endl;
+    cout << "GET_TABLE called with " << id << endl;
+    int socket = setup_client(host, port);
+    sendint(socket, GET_TABLE);
+    sendint(socket, id);
+    shutdown(socket, 1);
 }
 
 void quit(){
     cout << "QUIT called" << endl;
+    int socket = setup_client(host, port);
+    sendint(socket, QUIT);
+    shutdown(socket, 1);
 }
