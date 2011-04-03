@@ -14,6 +14,8 @@ public:
     Node();
     Node(int id, int port);
     Node findSuccessorTo(int queryId);
+    Node findPredecessor();
+    void notify(int myId, int myPort);
     void setId(int id);
     void setPort(int port);
 };

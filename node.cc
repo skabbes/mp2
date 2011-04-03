@@ -41,6 +41,38 @@ bool between(int first, int second, int test){
    return test > first && test < second;
 }
 
+void * stabilizer(void * arg){
+    cout << "Stabilizer started " << endl;
+    while(1){
+        sleep(5);
+        Node x = next.findPredecessor();
+        if( between(id, next.id, x.id) ){
+            next = x;
+            cout << "Node " << id << " next is " << next.id << endl;
+        }
+        next.notify(id, port);
+    }
+
+    // notify
+    return NULL;
+}
+
+void startThread( void * (*functor)(void *), void * arg ){
+    pthread_attr_t DetachedAttr;
+    pthread_attr_init(&DetachedAttr);
+    pthread_attr_setdetachstate(&DetachedAttr, PTHREAD_CREATE_DETACHED);
+
+    pthread_t handler;
+    if( pthread_create(&handler, &DetachedAttr, functor, arg) ){
+        free(arg);
+        perror("pthread_create");
+    }
+    pthread_detach(handler);
+
+    // free resources for detached attribute
+    pthread_attr_destroy(&DetachedAttr);
+}
+
 Node closestFinger(int queryId){
    for(int i=m-1;i>=0;i--){
       if( ft[i].id == queryId ){
@@ -108,6 +140,16 @@ void * thread_conn_handler(void * arg){
     else if( command == GET_TABLE){
       cout << "Node " << id << " got GET_TABLE " <<  readint(socket) << endl;
     }
+    else if( command == NOTIFY ){
+        int theirId = readint(socket);
+        int theirPort = readint(socket);
+        Node them(theirId, theirPort);
+
+        if( prev.id == id || between(prev.id, id, them.id) ){
+            prev = them;
+            cout << "Node " << id << " prev is " << prev.id << endl;
+        }
+    }
     else if( command == FIND_SUCCESSOR ){
 
       int queryId = readint(socket);
@@ -121,6 +163,11 @@ void * thread_conn_handler(void * arg){
 
       sendint(socket, closest.id);
       sendint(socket, closest.port);
+    }
+    else if( command == FIND_PREDECESSOR ){
+      //cout << "Node " << id << " got FIND Predecessor" << endl;
+      sendint(socket, prev.id);
+      sendint(socket, prev.port);
     }
     else if( command == QUIT){
       cout << "Node " << id << " got QUIT" << endl;
@@ -166,17 +213,12 @@ int main(int argc, char ** argv){
     // if port == 0, we get the new port number back as an output param
     int server = setup_server(port, &port);
 
+    startThread(stabilizer, NULL);
+
     // run code for introducer here
     socklen_t sin_size;
     struct sockaddr_storage their_addr;
     char s[INET6_ADDRSTRLEN];
-
-    // detached threads
-    pthread_attr_t DetachedAttr;
-    pthread_attr_init(&DetachedAttr);
-    pthread_attr_setdetachstate(&DetachedAttr, PTHREAD_CREATE_DETACHED);
-
-    pthread_t handler;
 
     while(1) {
         sin_size = sizeof their_addr;
@@ -187,21 +229,13 @@ int main(int argc, char ** argv){
             continue;
         }
 
-        inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-        cout << "Node " << id << " got connection from " << s << endl;
+        //inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
+        //cout << "Node " << id << " got connection from " << s << endl;
 
         // prepare argument for thread
         int * arg = (int *) malloc( sizeof(int) );
         *arg = new_fd;
-        if( pthread_create(&handler, &DetachedAttr, thread_conn_handler, arg) ){
-            free(arg);
-            perror("pthread_create");
-            continue;
-        }
-        pthread_detach(handler);
+        startThread(thread_conn_handler, arg);
     }
-
-    // free resources for detached attribute
-    pthread_attr_destroy(&DetachedAttr);
     return EXIT_SUCCESS;
 }

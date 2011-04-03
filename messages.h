@@ -7,6 +7,8 @@ enum {
     FIND_FILE,
     GET_TABLE,
     QUIT,
-    FIND_SUCCESSOR
+    FIND_SUCCESSOR,
+    FIND_PREDECESSOR,
+    NOTIFY 
 };
 #endif

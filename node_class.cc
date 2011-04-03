@@ -29,6 +29,25 @@ Node Node::findSuccessorTo(int queryId){
    return temp;
 }
 
+void Node::notify(int myId, int myPort){
+   int socket = setup_client("localhost", port);
+   sendint(socket, NOTIFY);
+   sendint(socket, myId);
+   sendint(socket, myPort);
+}
+
+Node Node::findPredecessor(){
+   //open up a connection to this node, and return its successor
+   int socket = setup_client("localhost", port);
+
+   sendint(socket, FIND_PREDECESSOR);
+
+   int predecessorId = readint(socket);
+   int predecessorPort = readint(socket);
+
+   return Node(predecessorId, predecessorPort);
+}
+
 void Node::setId(int _id){
    id = _id;
 }
