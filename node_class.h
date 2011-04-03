@@ -14,6 +14,7 @@ public:
     Node();
     Node(int id, int port);
     Node findSuccessorTo(int queryId);
+    vector<int> getTable(int queryId);
     Node findPredecessor();
     void notify(int myId, int myPort);
     void setId(int id);

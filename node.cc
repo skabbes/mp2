@@ -19,11 +19,13 @@ using namespace std;
 
 // function definitions
 int main(int argc, char ** argv);
+Node closestFinger(int queryId);
 
 // global variables definitions
 int m;
 int id;
 int port;
+pthread_mutex_t ft_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // finger table
 vector<Node> ft;
@@ -35,25 +37,71 @@ Node next;
 Node prev;
 
 bool between(int first, int second, int test){
-   if( first >= second ){
+   if( first > second ){
       return test > first || test < second;
    }
    return test > first && test < second;
 }
 
 void * stabilizer(void * arg){
-    cout << "Stabilizer started " << endl;
+    //cout << "Stabilizer started " << endl;
+
     while(1){
-        sleep(5);
+        usleep(250000);
+
+        // lock
+        pthread_mutex_lock(&ft_mutex);
+
         Node x = next.findPredecessor();
-        if( between(id, next.id, x.id) ){
+        if( id == next.id || between(id, next.id, x.id) ){
             next = x;
-            cout << "Node " << id << " next is " << next.id << endl;
+            ft[0] = next;
+            //cout << "Node " << id << " next is " << next.id << endl;
         }
         next.notify(id, port);
+
+        // unlock
+        pthread_mutex_unlock(&ft_mutex);
     }
 
     // notify
+    return NULL;
+}
+
+void * fixFingers(void * arg){
+    //cout << "Fix fingers started " << endl;
+    while(1){
+        usleep(250000);
+        // lock
+        pthread_mutex_lock(&ft_mutex);
+
+        for(unsigned int i=0;i<ft.size();i++){
+           int fingerId = (id + (1 << i)) % (1 << m);
+
+           Node closest = closestFinger(fingerId);
+           //cout << "node " << id << " thinks closest to " << fingerId << " is " << closest.id << endl;
+
+           if( id == closest.id || closest.id == fingerId ){
+               ft[i] = closest;
+               continue;
+           }
+
+           ft[i] = closest.findSuccessorTo( fingerId );
+        }
+
+        /*
+        stringstream ss (stringstream::in | stringstream::out);
+        ss << "Finger Table for Node " << id << endl;
+        for(unsigned int i=0;i<ft.size();i++){
+           ss << i << "\t" << ft[i].id << endl;
+        }
+        cout << ss.str() << endl;
+        */
+
+        // unlock
+        pthread_mutex_unlock(&ft_mutex);
+    }
+
     return NULL;
 }
 
@@ -78,13 +126,12 @@ Node closestFinger(int queryId){
       if( ft[i].id == queryId ){
          return ft[i];
       }
+
       if( between(ft[i].id, id, queryId) ){
          return ft[i];
       }
    }
 
-   // throw exception?
-   int x = 10 / 0;
    return ft[0];
 }
 
@@ -138,7 +185,26 @@ void * thread_conn_handler(void * arg){
       cout << "Node " << id << " got FIND_FILE " << readstring(socket)  << endl;
     }
     else if( command == GET_TABLE){
-      cout << "Node " << id << " got GET_TABLE " <<  readint(socket) << endl;
+
+      int queryId = readint(socket);
+      cout << "Node " << id << " got GET_TABLE " <<  queryId  << endl;
+      Node closest = closestFinger(queryId);
+
+      vector<int> table;
+      if( queryId == id ){
+         for(unsigned int i=0;i<ft.size();i++){
+            table.push_back( ft[i].id );
+         }
+      } else {
+         table = closest.getTable(queryId);
+      }
+
+      sendint(socket, ft.size());
+      for(unsigned int i=0;i<table.size();i++){
+         sendint(socket, table[i]);
+      }
+      close(socket);
+
     }
     else if( command == NOTIFY ){
         int theirId = readint(socket);
@@ -147,17 +213,25 @@ void * thread_conn_handler(void * arg){
 
         if( prev.id == id || between(prev.id, id, them.id) ){
             prev = them;
-            cout << "Node " << id << " prev is " << prev.id << endl;
+            if( them.id != id ){
+               cout << "Node " << id << " prev is " << prev.id << endl;
+            }
         }
     }
     else if( command == FIND_SUCCESSOR ){
 
       int queryId = readint(socket);
 
-      cout << "Node " << id << " got FIND SUCCESSOR TO " << queryId << endl;
+      //cout << "Node " << id << " got FIND SUCCESSOR TO " << queryId << endl;
 
       Node closest = closestFinger(queryId);
-      if( closest.id != id ){
+      if( queryId == id ){
+         closest = Node(id, port);
+      }
+      else if( queryId == next.id || between(id, next.id, queryId) ){
+         closest = next;
+      }
+      else if( closest.id != id ){
          closest = closest.findSuccessorTo(queryId);
       }
 
@@ -174,7 +248,7 @@ void * thread_conn_handler(void * arg){
     }
 
     // stop reading from socket, but keep tryingn to send data
-    shutdown(socket, 1);
+    close(socket);
     return NULL;
 }
 
@@ -214,11 +288,12 @@ int main(int argc, char ** argv){
     int server = setup_server(port, &port);
 
     startThread(stabilizer, NULL);
+    startThread(fixFingers, NULL);
 
     // run code for introducer here
     socklen_t sin_size;
     struct sockaddr_storage their_addr;
-    char s[INET6_ADDRSTRLEN];
+    //char s[INET6_ADDRSTRLEN];
 
     while(1) {
         sin_size = sizeof their_addr;

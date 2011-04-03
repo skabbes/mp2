@@ -112,8 +112,27 @@ void addNode(vector<int> ids){
     for(unsigned int i=0; i<ids.size(); i++){
        sendint(socket, ids[i]);
     }
+    close(socket);
 
-    shutdown(socket, 1);
+    int waitTime = ids.size() * 2;
+    cout << "Waiting " << waitTime << " seconds for system to stabilize" << endl;
+    sleep( waitTime );
+
+    for(unsigned int i=0; i<ids.size(); i++){
+       int socket = setup_client(host, port);
+       sendint(socket, GET_TABLE);
+       sendint(socket, ids[i]);
+
+       int size = readint(socket);
+       cout << "Finger table for node " << ids[i] << endl;
+       cout << "\ti\tf[i]" << endl;
+       for(int j=0;j<size;j++){
+         int temp = readint(socket);
+         cout << "\t" << j << "\t" << temp << endl;
+       }
+       close(socket);
+    }
+
 }
 
 void addFile(string filename, string ip){
@@ -125,7 +144,7 @@ void addFile(string filename, string ip){
     sendstring(socket, filename);
     sendstring(socket, ip);
 
-    shutdown(socket, 1);
+   close(socket);
 }
 
 void delFile(string filename){
