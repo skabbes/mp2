@@ -180,6 +180,7 @@ void * thread_conn_handler(void * arg){
 	/**
 	TODO: Implement ADD_FILE
 	
+       //
 	Case (1) 
 	if( hash of filname is me ){
 		// add filenamd and ip addres to my list
