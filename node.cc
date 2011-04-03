@@ -25,16 +25,26 @@ Node closestFinger(int queryId);
 int m;
 int id;
 int port;
-pthread_mutex_t ft_mutex = PTHREAD_MUTEX_INITIALIZER;
+bool shouldQuit = false;
+pthread_mutex_t quit_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 // finger table
 vector<Node> ft;
+pthread_mutex_t ft_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 vector<string> files;
 vector<string> ipaddrs;
 
 Node next;
 Node prev;
+
+bool canQuit(){
+   pthread_mutex_lock(&quit_mutex);
+   bool temp = shouldQuit;
+   pthread_mutex_unlock(&quit_mutex);
+   return temp;
+}
 
 bool between(int first, int second, int test){
    if( first > second ){
@@ -46,8 +56,7 @@ bool between(int first, int second, int test){
 void * stabilizer(void * arg){
     //cout << "Stabilizer started " << endl;
 
-    while(1){
-        usleep(250000);
+    while( !canQuit() ){
 
         // lock
         pthread_mutex_lock(&ft_mutex);
@@ -62,6 +71,7 @@ void * stabilizer(void * arg){
 
         // unlock
         pthread_mutex_unlock(&ft_mutex);
+        usleep(250000);
     }
 
     // notify
@@ -70,8 +80,7 @@ void * stabilizer(void * arg){
 
 void * fixFingers(void * arg){
     //cout << "Fix fingers started " << endl;
-    while(1){
-        usleep(250000);
+    while( !canQuit() ){
         // lock
         pthread_mutex_lock(&ft_mutex);
 
@@ -100,6 +109,7 @@ void * fixFingers(void * arg){
 
         // unlock
         pthread_mutex_unlock(&ft_mutex);
+        usleep(250000);
     }
 
     return NULL;
@@ -220,7 +230,6 @@ void * thread_conn_handler(void * arg){
       for(unsigned int i=0;i<table.size();i++){
          sendint(socket, table[i]);
       }
-      close(socket);
 
     }
     else if( command == NOTIFY ){
@@ -262,6 +271,16 @@ void * thread_conn_handler(void * arg){
     }
     else if( command == QUIT){
       cout << "Node " << id << " got QUIT" << endl;
+
+      int originalId = readint(socket);
+      if( next.id != originalId ){
+         next.quit(originalId);
+      }
+
+      // ack the quit...
+      sendint(socket, originalId);
+
+      shouldQuit = true;
     }
 
     // stop reading from socket, but keep tryingn to send data
@@ -312,22 +331,42 @@ int main(int argc, char ** argv){
     struct sockaddr_storage their_addr;
     //char s[INET6_ADDRSTRLEN];
 
-    while(1) {
-        sin_size = sizeof their_addr;
+    while( !canQuit() ){
+       sin_size = sizeof their_addr;
 
-        int new_fd = accept(server, (struct sockaddr *)&their_addr, &sin_size);
-        if (new_fd == -1) {
-            perror("accept");
-            continue;
-        }
+       // we'll let incoming connecctions timeout to check if we should quit...
+       fd_set readfds;
+       FD_ZERO(&readfds);
+       FD_SET(server, &readfds);
 
-        //inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-        //cout << "Node " << id << " got connection from " << s << endl;
+       // Timeout parameter
+       timeval tv = { 0 };
+       tv.tv_sec = 1;
 
-        // prepare argument for thread
-        int * arg = (int *) malloc( sizeof(int) );
-        *arg = new_fd;
-        startThread(thread_conn_handler, arg);
+       int ret = select(1000, &readfds, NULL, NULL, &tv);
+       if (ret > 0) {
+          if (FD_ISSET(server, &readfds)) {
+             // Accept incoming connection and add new socket to list
+             int new_fd = accept(server, (struct sockaddr *)&their_addr, &sin_size);
+             if (new_fd == -1) {
+                perror("accept");
+                continue;
+             }
+
+             //inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
+             //cout << "Node " << id << " got connection from " << s << endl;
+
+             // prepare argument for thread
+             int * arg = (int *) malloc( sizeof(int) );
+             *arg = new_fd;
+             startThread(thread_conn_handler, arg);
+
+          }
+       }
     }
+
+    // let connections finish
+    sleep(1);
+
     return EXIT_SUCCESS;
 }

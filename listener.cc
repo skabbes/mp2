@@ -175,5 +175,9 @@ void quit(){
     cout << "QUIT called" << endl;
     int socket = setup_client(host, port);
     sendint(socket, QUIT);
-    shutdown(socket, 1);
+
+    // designate the origin of the quit to come from node 0
+    sendint(socket, 0);
+    readint(socket);
+    close(socket);
 }
