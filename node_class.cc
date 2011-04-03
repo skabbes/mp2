@@ -68,6 +68,21 @@ Node Node::findPredecessor(){
    return Node(predecessorId, predecessorPort);
 }
 
+/**
+* Add file to the node (asking if there is any node can store the specific file)
+*/
+void Node::addFile(string filename, string ipaddr)
+{
+   //open up a connection to this node, and return its successor
+   int socket = setup_client("localhost", port);
+
+   sendint(socket, ADD_FILE);
+   sendstring(socket, filename);
+   sendstring(socket, ipaddr);
+
+   close(socket);
+}
+
 void Node::setId(int _id){
    id = _id;
 }

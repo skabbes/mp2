@@ -177,27 +177,23 @@ void * thread_conn_handler(void * arg){
       string filename = readstring(socket);
       string ipaddr = readstring(socket);
       cout << "Node " << id << " got ADD_FILE " << filename << " " << ipaddr << endl;
-	/**
-	TODO: Implement ADD_FILE
 	
-       //
-	Case (1) 
-	if( hash of filname is me ){
-		// add filenamd and ip addres to my list
-	}
+		//Implement ADD_FILE
+		int key = SHA1(filename,m);
+		Node predNode = prev;	// fidn predecessor of the current node ID
 
-	Case (2)
-	also if the key is between pred. and me then add file and ip to me
-
-
-	Case (3) Otherwise, ask the closets hash file name
-	Node closest = findClosest( hash of filename );
-	closest.addFile(filename, ipaddress);
+		// if the key is the same as the node ID or in between node Id and its predecessor
+		if (key == id || between(predNode.id,id,key))
+		{
+			files.push_back(filename.c_str());
+			ipaddrs.push_back(ipaddr.c_str());
+			printf("Add Key %i (%s) to node %i (self)\n", key, filename.c_str(), id);
+		} else {
+			// Otherwise, ask the closest node (recursion)
+			Node closestNode = closestFinger(key);
+			closestNode.addFile(filename, ipaddr);
+		}  
 		
-       
-	**/
-
-	
     }
     else if( command == DEL_FILE){
       cout << "Node " << id << " got DEL_FILE " << readstring(socket)  << endl;
