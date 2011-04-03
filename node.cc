@@ -177,6 +177,26 @@ void * thread_conn_handler(void * arg){
       string filename = readstring(socket);
       string ipaddr = readstring(socket);
       cout << "Node " << id << " got ADD_FILE " << filename << " " << ipaddr << endl;
+	/**
+	TODO: Implement ADD_FILE
+	
+	Case (1) 
+	if( hash of filname is me ){
+		// add filenamd and ip addres to my list
+	}
+
+	Case (2)
+	also if the key is between pred. and me then add file and ip to me
+
+
+	Case (3) Otherwise, ask the closets hash file name
+	Node closest = findClosest( hash of filename );
+	closest.addFile(filename, ipaddress);
+		
+       
+	**/
+
+	
     }
     else if( command == DEL_FILE){
       cout << "Node " << id << " got DEL_FILE " << readstring(socket)  << endl;
