@@ -65,7 +65,7 @@ void * stabilizer(void * arg){
         if( id == next.id || between(id, next.id, x.id) ){
             next = x;
             ft[0] = next;
-            //cout << "Node " << id << " next is " << next.id << endl;
+            cout << "Node " << id << " next is " << next.id << endl;
         }
         next.notify(id, port);
 
@@ -76,6 +76,29 @@ void * stabilizer(void * arg){
 
     // notify
     return NULL;
+}
+
+void * fixFiles(void * arg){
+   sleep(1);
+
+   vector<string> files_left;
+   vector<string> ips_left;
+
+   for(unsigned int i=0;i<files.size();i++){
+      int key = SHA1(files[i], m);
+      if( key == prev.id || !between(prev.id, id, key) ){
+         cout << "Moving file " << files[i] << " with key " << key << " to node " << prev.id << endl;
+         prev.addFile(files[i], ipaddrs[i]);
+      } else {
+         files_left.push_back( files[i] );
+         ips_left.push_back( ipaddrs[i] );
+      }
+   }
+
+   files = files_left;
+   ipaddrs = ips_left;
+
+   return NULL;
 }
 
 void * fixFingers(void * arg){
@@ -238,10 +261,14 @@ void * thread_conn_handler(void * arg){
         Node them(theirId, theirPort);
 
         if( prev.id == id || between(prev.id, id, them.id) ){
-            prev = them;
             if( them.id != id ){
-               cout << "Node " << id << " prev is " << prev.id << endl;
+               // move files around in here
+               startThread(fixFiles, NULL);
             }
+
+            // actualy update previous pointer
+            prev = them;
+            cout << "Node " << id << " prev is " << prev.id << endl;
         }
     }
     else if( command == FIND_SUCCESSOR ){
