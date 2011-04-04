@@ -55,8 +55,9 @@ int main(int argc, char ** argv){
     int m = atoi(argv[1]);
 
     // launch the listener process
-    launchListener(PORT);
     launchIntroducer(m, PORT);
+    sleep(1);
+    launchListener(PORT);
 
     // wait for the processes to quit
     int status;

@@ -47,14 +47,15 @@ vector<int> Node::getTable(int queryId){
    return table;
 }
 
-void Node::quit(int originalId){
+int Node::quit(int originalId){
    int socket = setup_client("localhost", port);
    sendint(socket, QUIT);
    sendint(socket, originalId);
 
    // wait for the ack
-   readint(socket);
+   int total = readint(socket);
    close(socket);
+   return total;
 }
 
 void Node::notify(int myId, int myPort){

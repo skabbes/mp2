@@ -204,16 +204,25 @@ void getTable(int id){
     int socket = setup_client(host, port);
     sendint(socket, GET_TABLE);
     sendint(socket, id);
-    shutdown(socket, 1);
+
+    int size = readint(socket);
+    if( size == 0 ){
+       cout << "Node " << id << " doesn't yet exist" << endl;
+    }
+    close(socket);
 }
 
 void quit(){
-    cout << "QUIT called" << endl;
+    cout << "QUIT called, quitting in 5 seconds after connections finish"  << endl;
+
     int socket = setup_client(host, port);
     sendint(socket, QUIT);
 
     // designate the origin of the quit to come from node 0
     sendint(socket, 0);
-    readint(socket);
+    int total = readint(socket);
     close(socket);
+    cout << "TOTAL MESSAGES: " << total << endl;
+
+    sleep(5);
 }

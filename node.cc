@@ -15,6 +15,8 @@
 #include "messages.h"
 #include "node_class.h"
 
+extern int TOTAL_MESSAGES;
+
 using namespace std;
 
 // function definitions
@@ -79,6 +81,7 @@ void * stabilizer(void * arg){
 }
 
 void * fixFiles(void * arg){
+   // wait for nodes to be added completely to system
    sleep(1);
 
    vector<string> files_left;
@@ -245,7 +248,11 @@ void * thread_conn_handler(void * arg){
          for(unsigned int i=0;i<ft.size();i++){
             table.push_back( ft[i].id );
          }
-      } else {
+      } else if( between(id, next.id, queryId) ){
+         cout << "ASDFASDFASASDFASDFASDFASDFasdf " << queryId << " doesn't exist" << endl;
+         vector<int> temp;
+         table = temp;
+      }else {
          table = closest.getTable(queryId);
       }
 
@@ -300,12 +307,15 @@ void * thread_conn_handler(void * arg){
       cout << "Node " << id << " got QUIT" << endl;
 
       int originalId = readint(socket);
+
+      int total = TOTAL_MESSAGES;
+
       if( next.id != originalId ){
-         next.quit(originalId);
+         total += next.quit(originalId);
       }
 
       // ack the quit...
-      sendint(socket, originalId);
+      sendint(socket, total);
 
       shouldQuit = true;
     }

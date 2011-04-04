@@ -4,6 +4,7 @@
 #include <string>
 using namespace std;
 
+
 int sendall(int s, const char *buf, int *len);
 int readall(int s, char *buf, int *len);
 
