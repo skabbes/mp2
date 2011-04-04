@@ -15,17 +15,34 @@ using namespace std;
 
 // function definitions
 int main(int argc, char ** argv);
-bool processCommand(stringstream & is);
+void * processCommand(void * arg);
 void addNode(vector<int> ids);
 void addFile(string filename, string ip);
 void delFile(string filename);
 void findFile(string filename);
 void getTable(int id);
 void quit();
+void startThread( void * (*functor)(void *), void * arg );
 
 // global variables definitions
 char * host;
 char * port;
+
+void startThread( void * (*functor)(void *), void * arg ){
+    pthread_attr_t DetachedAttr;
+    pthread_attr_init(&DetachedAttr);
+    pthread_attr_setdetachstate(&DetachedAttr, PTHREAD_CREATE_DETACHED);
+
+    pthread_t handler;
+    if( pthread_create(&handler, &DetachedAttr, functor, arg) ){
+        free(arg);
+        perror("pthread_create");
+    }
+    pthread_detach(handler);
+
+    // free resources for detached attribute
+    pthread_attr_destroy(&DetachedAttr);
+}
 
 int main(int argc, char ** argv){
 
@@ -37,22 +54,44 @@ int main(int argc, char ** argv){
     host = argv[1];
     port = argv[2];
 
-    string input;
 
     // read commands in line by line and process them
     bool shouldQuit = false;
     while( cin && !shouldQuit ){
+        string * input = new string();
+        getline(cin, *input);
+
         stringstream is (stringstream::in | stringstream::out);
-        getline(cin, input);
-        is << input;
-        shouldQuit = processCommand(is);
+        is << (*input);
+
+        string command;
+        is >> command;
+
+        if( command  == "QUIT" ){
+           shouldQuit = true;
+        } else if( command  == "SLEEP" ){
+           int seconds; 
+           is >> seconds;
+           cout << "sleeping for " << seconds << endl;
+           sleep(seconds); 
+        } else {
+           // start a thread so not to block other operations (handle concurrently)
+           startThread(processCommand, input);
+        }
     }
 
     quit();
     return 0;
 }
 
-bool processCommand(stringstream & is){
+void * processCommand(void * arg){
+    string * temp = (string *)arg;
+    string input = *temp;
+    delete temp;
+
+    stringstream is (stringstream::in | stringstream::out);
+    is << input;
+
     string command;
     is >> command;
     if( command.size() == 0 ) return false;
@@ -84,18 +123,12 @@ bool processCommand(stringstream & is){
         int nodeId;
         is >> nodeId; 
         getTable(nodeId);
-    } else if( command == "SLEEP" ){
-        int seconds; 
-        is >> seconds;
-        sleep(seconds); 
-    } else if( command == "QUIT" ){
-        // don't actually call quit here, we will call it in main to handle
-        // premature quits as well
     } else {
         // unrecognized command, just ignore it with an error
         cerr << "Invalid command: " << command << endl;
     }
-    return command == "QUIT";
+
+    return NULL;
 }
 
 void addNode(vector<int> ids){
@@ -114,7 +147,10 @@ void addNode(vector<int> ids){
     }
     close(socket);
 
+    /* BAD, don't sleep, prevents concurrent operation */
+
     int waitTime = ids.size() * 2;
+
     cout << "Waiting " << waitTime << " seconds for system to stabilize" << endl;
     sleep( waitTime );
 
