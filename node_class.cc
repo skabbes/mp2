@@ -32,21 +32,28 @@ Node Node::findSuccessorTo(int queryId){
    return Node(successorId, successorPort);
 }
 
-vector<int> Node::getTable(int queryId){
+pair< vector<int>, vector<int> > Node::getTable(int queryId){
    int socket = setup_client("localhost", port);
 
    sendint(socket, GET_TABLE);
    sendint(socket, queryId);
 
-   int size = readint(socket);
+   int tableSize = readint(socket);
    vector<int> table;
-   for(int i=0;i<size;i++){
+   for(int i=0;i<tableSize;i++){
       int temp = readint(socket);
       table.push_back(temp);
    }
+   
+   int keySize = readint(socket);
+   vector<int> keys;
+   for(int i=0;i<keySize;i++){
+      int temp = readint(socket);
+      keys.push_back(temp);
+   }
 
    close(socket);
-   return table;
+   return pair< vector<int>, vector<int> >(table, keys);
 }
 
 int Node::quit(int originalId){

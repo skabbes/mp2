@@ -221,9 +221,24 @@ void getTable(int id){
     if( size == 0 ){
        cout << "Node " << id << " doesn't yet exist" << endl;
     } else {
-        for(int i=0;i<size;i++){
-            cout << readint(socket) << endl;
-        }
+	
+	   cout << "Finger table for node " << id << endl;
+       cout << "\ti\tf[i]" << endl;
+	   
+       for(int j=0;j<size;j++){
+         int temp = readint(socket);
+         cout << "\t" << j << "\t" << temp << endl;
+       }
+	   
+	   cout << "Keys at node " << id << " ";
+	   int keySize = readint(socket);
+	   cout << "(";
+	   for(int j=0;j<keySize;j++){
+         int key = readint(socket);
+         cout << key << ", ";
+       }
+	   cout << ")" << endl;
+
     }
     close(socket);
 }
