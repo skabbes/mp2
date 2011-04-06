@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 
 #include "socket.h"
+#include "sha1.h"
 #include "messages.h"
 
 using namespace std;
@@ -28,6 +29,7 @@ void startThread( void * (*functor)(void *), void * arg );
 // global variables definitions
 char * host;
 char * port;
+int m;
 
 void startThread( void * (*functor)(void *), void * arg ){
     pthread_attr_t DetachedAttr;
@@ -47,13 +49,14 @@ void startThread( void * (*functor)(void *), void * arg ){
 
 int main(int argc, char ** argv){
 
-    if( argc != 3){
-       cerr << "Usage " << argv[0] << " <introducer-host> <introducer-port>" << endl;
+    if( argc != 4){
+       cerr << "Usage " << argv[0] << " <m> <introducer-host> <introducer-port>" << endl;
        return EXIT_FAILURE;
     }
 
-    host = argv[1];
-    port = argv[2];
+    m = atoi(argv[1]);
+    host = argv[2];
+    port = argv[3];
 
 
     // read commands in line by line and process them
@@ -173,15 +176,16 @@ void addNode(vector<int> ids){
 }
 
 void addFile(string filename, string ip){
-    cout << "ADD_FILE called with " << filename << ", " << ip << endl;
-
     int socket = setup_client(host, port);
     sendint(socket, ADD_FILE);
 
     sendstring(socket, filename);
     sendstring(socket, ip);
 
-   close(socket);
+    int fileNodeId = readint(socket);
+
+    cout << "Added file " << filename << " (" << SHA1(filename, m) <<  ") to Node " << fileNodeId << endl; 
+    close(socket);
 }
 
 void delFile(string filename){
@@ -205,7 +209,6 @@ void findFile(string filename){
         cout << filename << " found at Node " << fileNodeId << " : " << ip << endl;
     } else {
         cout << filename << " not found " << endl;
-        cout << "error code " << result;
     }
 
     close(socket);
@@ -244,19 +247,18 @@ void getTable(int id){
 }
 
 void quit(){
-    cout << "QUIT called, quitting in 1 second after connections finish"  << endl;
-
     int socket = setup_client(host, port);
     sendint(socket, QUIT);
-
-    // designate the origin of the quit to come from node 0
+    // designate the origin of the quit to come from node 0 (Node which we're connecting to)
     sendint(socket, 0);
+
     int totalMessages = readint(socket);
     int stabilizerMessages = readint(socket);
     close(socket);
+
+    cout << "QUIT called, quitting in 1 second after connections finish"  << endl;
     cout << "TOTAL MESSAGES: " << totalMessages << endl;
     cout << "STABLILZER MESSAGES: " << stabilizerMessages << endl;
     cout << "DIFFERENCE : " << totalMessages - stabilizerMessages << endl;
-
     sleep(1);
 }

@@ -95,7 +95,7 @@ Node Node::findPredecessor(){
 /**
 * Add file to the node (asking if there is any node can store the specific file)
 */
-void Node::addFile(string filename, string ipaddr)
+int Node::addFile(string filename, string ipaddr)
 {
    //open up a connection to this node, and return its successor
    int socket = setup_client("localhost", port);
@@ -104,7 +104,10 @@ void Node::addFile(string filename, string ipaddr)
    sendstring(socket, filename);
    sendstring(socket, ipaddr);
 
+   int fileNodeId = readint(socket);
    close(socket);
+
+   return fileNodeId;
 }
 /**
 * Remove file from the node
