@@ -39,14 +39,13 @@ int M;
 
 int main(int argc, char ** argv){
 
-    if( argc != 4){
-       cerr << "Usage " << argv[0] << " <m> <introducer-host> <introducer-port>" << endl;
+    if( argc != 3){
+       cerr << "Usage " << argv[0] << " <m> <introducer-port>" << endl;
        return EXIT_FAILURE;
     }
 
     M = atoi(argv[1]);
-    char * host = argv[2];
-    int port = atoi(argv[3]);
+    int port = atoi(argv[2]);
     introducer = Node(0, port);
 
     bool shouldQuit = false;

@@ -24,7 +24,7 @@ pid_t launchListener(int m, int port){
 
     if( pid == 0 ){
         // launch listener process
-        execlp("./listener", "./listener", mString, "localhost", portString, (char *)0 );
+        execlp("./listener", "./listener", mString, portString, (char *)0 );
     } 
 
     return pid;
