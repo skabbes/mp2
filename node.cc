@@ -220,7 +220,7 @@ void * thread_conn_handler(void * arg){
 	
 		//Implement ADD_FILE
 		int key = SHA1(filename,m);
-		Node predNode = prev;	// fidn predecessor of the current node ID
+		Node predNode = prev;	// find predecessor of the current node ID
 
 		// if the key is the same as the node ID or in between node Id and its predecessor
 		if (key == id || between(predNode.id,id,key))
@@ -236,7 +236,44 @@ void * thread_conn_handler(void * arg){
 		
     }
     else if( command == DEL_FILE){
-      cout << "Node " << id << " got DEL_FILE " << readstring(socket)  << endl;
+	  string filename = readstring(socket);
+      cout << "Node " << id << " got DEL_FILE " << filename  << endl;
+
+	  int key = SHA1(filename, m);
+	  
+	  // if the key is the same as the node ID or in between node Id and its predecessor
+	  if (key==id || between(prev.id,id,key))
+	  {
+		int targetIndex = -1;
+		
+		// search for the file inside this node
+		for (unsigned int i=0; i < files.size(); ++i)
+		{
+			if (files[i]==filename)
+			{
+				targetIndex = i;
+				break;
+			}
+		}
+		
+		// if found
+		if (targetIndex != -1)
+		{
+			files.erase(files.begin() + targetIndex);
+			ipaddrs.erase(ipaddrs.begin() + targetIndex);
+			cout << "File: " << filename << " has been deleted from node#" << id << "."<<endl;
+		} else {
+			// display error message
+			cout << "Error: " << filename << " cannot be found!" << endl;
+		}
+		
+	  } else {
+		// Otherwise, ask the closest node 
+		Node closestNode = closestFinger(key);
+		closestNode.removeFile(filename);
+	  }
+	  
+	  
     }
     else if( command == FIND_FILE){
       string filename = readstring(socket);

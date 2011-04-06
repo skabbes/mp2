@@ -98,6 +98,19 @@ void Node::addFile(string filename, string ipaddr)
 
    close(socket);
 }
+/**
+* Remove file from the node
+* @param filename - filename to be deleted
+*/
+void Node::removeFile(string filename)
+{
+	int socket = setup_client("localhost",port);
+	
+	sendint(socket, DEL_FILE);
+	sendstring(socket, filename);
+	
+	close(socket);
+}
 
 // if the id == -1, then let that denote an error (no file found)
 pair<int, string> Node::findFile(string filename){
