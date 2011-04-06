@@ -252,11 +252,13 @@ void * thread_conn_handler(void * arg){
 	  string filename = readstring(socket);
 
 	  int key = SHA1(filename, m);
-	  
+	  int fileNodeId = -1;
+			
 	  // if the key is the same as the node ID or in between node Id and its predecessor
 	  if (key==id || between(prev.id,id,key))
 	  {
 		int targetIndex = -1;
+
 		
 		// search for the file inside this node
 		for (unsigned int i=0; i < files.size(); ++i)
@@ -273,23 +275,21 @@ void * thread_conn_handler(void * arg){
 		{
 			files.erase(files.begin() + targetIndex);
 			ipaddrs.erase(ipaddrs.begin() + targetIndex);
-			// send file found message
-			sendint(socket, FILE_FOUND);
-			sendint(socket, id);
-			//cout << "File: " << filename << " has been deleted from node#" << id << "."<<endl;
-		} else {
-			// send error message
-			sendint(socket, FILE_NOT_FOUND);
-			cout << "[Error]: " << filename << " cannot be found!" << endl;
+			fileNodeId = id;
 		}
 		
 	  } else {
 		// Otherwise, ask the closest node 
 		Node closestNode = closestFinger(key);
-		closestNode.removeFile(filename);
+		fileNodeId = closestNode.removeFile(filename);
 	  }
 	  
-	  
+	  if( fileNodeId != -1){
+		sendint(socket, FILE_FOUND);
+		sendint(socket, fileNodeId);
+	  } else {
+		sendint(socket, FILE_NOT_FOUND);
+	  }
     }
     else if( command == FIND_FILE){
       string filename = readstring(socket);

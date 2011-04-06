@@ -122,6 +122,13 @@ int Node::removeFile(string filename)
 	
 	int result = readint(socket);
 	
+	if( result == FILE_NOT_FOUND)
+	{
+		result = -1;
+	} else 
+	{
+		result = readint(socket);
+	}
 	
 	close(socket);
 	return result;

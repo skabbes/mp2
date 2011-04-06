@@ -151,8 +151,6 @@ void addNode(vector<int> ids){
     }
     close(socket);
 
-    /* BAD, don't sleep, prevents concurrent operation */
-
     double waitTime = ids.size() * .5;
 
     cout << "Waiting " << waitTime << " seconds for system to stabilize" << endl;
@@ -201,9 +199,8 @@ void delFile(string filename){
 		cout << "[Error]:" << filename << " not found !" << endl;
 	} else if (result == FILE_FOUND)
 	{
-		cout << filename << " with key " << readint(socket) << " has been deleted! " << endl;
+		cout << filename << " with key " << SHA1(filename,m) << " has been deleted from node# " << readint(socket) << endl;
 	}
-	
     close(socket);
 }
 
