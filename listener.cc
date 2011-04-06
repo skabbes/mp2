@@ -189,7 +189,18 @@ void delFile(string filename){
     int socket = setup_client(host, port);
     sendint(socket, DEL_FILE);
     sendstring(socket, filename);
-    shutdown(socket, 1);
+	
+	int result = readint(socket);
+	
+	if (result == FILE_NOT_FOUND)
+	{
+		cout << "[Error]:" << filename << " not found !" << endl;
+	} else if (result == FILE_FOUND)
+	{
+		cout << filename << " with key " << readint(socket) << " has been deleted! " << endl;
+	}
+	
+    close(socket);
 }
 
 void findFile(string filename){

@@ -19,7 +19,7 @@ public:
     pair<vector<int>, vector<int> > getTable(int queryId);
     Node findPredecessor();
     void addFile(string _filename, string _ipaddr);
-	 void removeFile(string filename);
+	int removeFile(string filename);
     pair<int, string> findFile(string filename);
     pair<int, int> quit(int originalId);
 

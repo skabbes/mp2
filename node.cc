@@ -276,9 +276,13 @@ void * thread_conn_handler(void * arg){
 		{
 			files.erase(files.begin() + targetIndex);
 			ipaddrs.erase(ipaddrs.begin() + targetIndex);
-			cout << "File: " << filename << " has been deleted from node#" << id << "."<<endl;
+			// send file found message
+			sendint(socket, FILE_FOUND);
+			sendint(socket, id);
+			//cout << "File: " << filename << " has been deleted from node#" << id << "."<<endl;
 		} else {
-			// display error message
+			// send error message
+			sendint(socket, FILE_NOT_FOUND);
 			cout << "[Error]: " << filename << " cannot be found!" << endl;
 		}
 		
