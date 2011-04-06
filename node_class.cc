@@ -49,15 +49,16 @@ vector<int> Node::getTable(int queryId){
    return table;
 }
 
-int Node::quit(int originalId){
+pair<int, int> Node::quit(int originalId){
    int socket = setup_client("localhost", port);
    sendint(socket, QUIT);
    sendint(socket, originalId);
 
    // wait for the ack
-   int total = readint(socket);
+   int total_messages = readint(socket);
+   int stabilizer_messages = readint(socket);
    close(socket);
-   return total;
+   return pair<int, int>(total_messages, stabilizer_messages);
 }
 
 void Node::notify(int myId, int myPort){

@@ -236,9 +236,12 @@ void quit(){
 
     // designate the origin of the quit to come from node 0
     sendint(socket, 0);
-    int total = readint(socket);
+    int totalMessages = readint(socket);
+    int stabilizerMessages = readint(socket);
     close(socket);
-    cout << "TOTAL MESSAGES: " << total << endl;
+    cout << "TOTAL MESSAGES: " << totalMessages << endl;
+    cout << "STABLILZER MESSAGES: " << stabilizerMessages << endl;
+    cout << "DIFFERENCE : " << totalMessages - stabilizerMessages << endl;
 
     sleep(1);
 }

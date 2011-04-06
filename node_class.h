@@ -19,9 +19,9 @@ public:
     vector<int> getTable(int queryId);
     Node findPredecessor();
     void addFile(string _filename, string _ipaddr);
-	void removeFile(string filename);
+	 void removeFile(string filename);
     pair<int, string> findFile(string filename);
-    int quit(int originalId);
+    pair<int, int> quit(int originalId);
 
     void notify(int myId, int myPort);
     void setId(int id);

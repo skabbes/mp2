@@ -16,7 +16,7 @@
 #include "messages.h"
 #include "node_class.h"
 
-extern int TOTAL_MESSAGES;
+int TOTAL_MESSAGES = 0;
 
 using namespace std;
 
@@ -28,6 +28,9 @@ Node closestFinger(int queryId);
 int m;
 int id;
 int port;
+
+int STABILIZER_MESSAGES = 0;
+
 bool shouldQuit = false;
 pthread_mutex_t quit_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -42,6 +45,7 @@ vector<string> ipaddrs;
 Node next;
 Node prev;
 
+// function which lets threads know whether they should quit or not
 bool canQuit(){
    pthread_mutex_lock(&quit_mutex);
    bool temp = shouldQuit;
@@ -49,6 +53,8 @@ bool canQuit(){
    return temp;
 }
 
+// function which check if test lies on the ring
+// between first and second
 bool between(int first, int second, int test){
    if( first > second ){
       return test > first || test < second;
@@ -56,15 +62,16 @@ bool between(int first, int second, int test){
    return test > first && test < second;
 }
 
+// thread which periodically runs to update the successor
+// at a node
 void * stabilizer(void * arg){
-    //cout << "Stabilizer started " << endl;
-
     while( !canQuit() ){
 
         // lock
         pthread_mutex_lock(&ft_mutex);
 
         Node x = next.findPredecessor();
+
         if( id == next.id || between(id, next.id, x.id) ){
             next = x;
             ft[0] = next;
@@ -78,15 +85,20 @@ void * stabilizer(void * arg){
 
         // unlock
         pthread_mutex_unlock(&ft_mutex);
+
+        // quit as soon as possible
+        if( canQuit() ) return NULL;
+
         usleep(250000);
     }
 
-    // notify
     return NULL;
 }
 
+// thread which moves files (if they need moving)
 void * fixFiles(void * arg){
-   // wait for nodes to be added completely to system
+
+   // wait for system to stablizie a little
    usleep(250000);
 
    vector<string> files_left;
@@ -95,7 +107,7 @@ void * fixFiles(void * arg){
    for(unsigned int i=0;i<files.size();i++){
       int key = SHA1(files[i], m);
       if(key != id && ( key == prev.id || !between(prev.id, id, key) )){
-         cout << "Moving file " << files[i] << " with key " << key << " to node " << prev.id << endl;
+         //cout << "Moving file " << files[i] << " with key " << key << " to node " << prev.id << endl;
          prev.addFile(files[i], ipaddrs[i]);
       } else {
          files_left.push_back( files[i] );
@@ -105,25 +117,24 @@ void * fixFiles(void * arg){
 
    files = files_left;
    ipaddrs = ips_left;
-
    return NULL;
 }
 
+// stablilzer function to periodically update each node's finger table
+// for nodes, we update ALL the finger table to ease grading
 void * fixFingers(void * arg){
-    //cout << "Fix fingers started " << endl;
     while( !canQuit() ){
         // lock
         pthread_mutex_lock(&ft_mutex);
 
         // we can reduce the number of messages sent by implementing random sending
-        // we left it as NOT random to ensure our finger tables will be correct
+        // we left it as NOT random to ensure our finger tables will be correct for queries (for grading)
         //int i = (int)( ft.size() * rand() / (RAND_MAX + 1.0) );
 
         for(unsigned int i=0;i<ft.size();i++){
            int fingerId = (id + (1 << i)) % (1 << m);
 
            Node closest = closestFinger(fingerId);
-           //cout << "node " << id << " thinks closest to " << fingerId << " is " << closest.id << endl;
 
            if( id == closest.id || closest.id == fingerId ){
                ft[i] = closest;
@@ -133,17 +144,12 @@ void * fixFingers(void * arg){
 
         }
 
-        /*
-        stringstream ss (stringstream::in | stringstream::out);
-        ss << "Finger Table for Node " << id << endl;
-        for(unsigned int i=0;i<ft.size();i++){
-           ss << i << "\t" << ft[i].id << endl;
-        }
-        cout << ss.str() << endl;
-        */
-
-        // unlock
+        // unlock shared memory
         pthread_mutex_unlock(&ft_mutex);
+
+        // quit this thread as early as possible
+        if( canQuit() ) return NULL;
+
         usleep(250000);
     }
 
@@ -166,6 +172,7 @@ void startThread( void * (*functor)(void *), void * arg ){
     pthread_attr_destroy(&DetachedAttr);
 }
 
+// finds the closest id to a queryId in the finger table
 Node closestFinger(int queryId){
    for(int i=m-1;i>=0;i--){
       if( ft[i].id == queryId ){
@@ -181,6 +188,7 @@ Node closestFinger(int queryId){
 }
 
 
+// launch a new node process
 pid_t launchNode(int m, int id){
     pid_t pid = fork();
 
@@ -207,6 +215,8 @@ void * thread_conn_handler(void * arg){
     int socket = *((int*)arg);
     free(arg);
     int command = readint(socket);
+
+    TOTAL_MESSAGES++;
 
     if( command == ADD_NODE){
       cout << "NODE " << id << " got ADD_NODE";
@@ -351,6 +361,9 @@ void * thread_conn_handler(void * arg){
 
     }
     else if( command == NOTIFY ){
+
+        STABILIZER_MESSAGES++;
+
         int theirId = readint(socket);
         int theirPort = readint(socket);
         Node them(theirId, theirPort);
@@ -374,6 +387,8 @@ void * thread_conn_handler(void * arg){
     }
     else if( command == FIND_SUCCESSOR ){
 
+      STABILIZER_MESSAGES++;
+
       int queryId = readint(socket);
 
       //cout << "Node " << id << " got FIND SUCCESSOR TO " << queryId << endl;
@@ -394,6 +409,7 @@ void * thread_conn_handler(void * arg){
     }
     else if( command == FIND_PREDECESSOR ){
       //cout << "Node " << id << " got FIND Predecessor" << endl;
+      STABILIZER_MESSAGES++;
       sendint(socket, prev.id);
       sendint(socket, prev.port);
     }
@@ -402,14 +418,17 @@ void * thread_conn_handler(void * arg){
 
       int originalId = readint(socket);
 
-      int total = TOTAL_MESSAGES;
+      int totalMessages = TOTAL_MESSAGES;
+      int stabilizerMessages = STABILIZER_MESSAGES;
 
       if( next.id != originalId ){
-         total += next.quit(originalId);
+         pair<int, int> messages = next.quit(originalId);
+         totalMessages += messages.first;
+         stabilizerMessages += messages.second;
       }
 
-      // ack the quit...
-      sendint(socket, total);
+      sendint(socket, totalMessages);
+      sendint(socket, stabilizerMessages);
 
       shouldQuit = true;
     }
