@@ -164,7 +164,7 @@ bool between(int first, int second, int test){
 // at a node
 void * stabilizer(void * arg){
     while( true ){
-        usleep(1000000 * STABILIZATION_INTERVAL);
+        usleep( (int)(1000000 * STABILIZATION_INTERVAL) );
         // lock
         pthread_mutex_lock(&ft_mutex);
 
@@ -188,18 +188,18 @@ void * stabilizer(void * arg){
 void * fixFiles(void * arg){
 
    // wait for system to stablizie a little
-   usleep(1000000 * STABILIZATION_INTERVAL);
+   usleep((int)(1000000 * STABILIZATION_INTERVAL));
 
    vector<string> files_left;
    vector<string> ips_left;
 
    for(unsigned int i=0;i<files.size();i++){
       int key = SHA1(files[i], m);
-      if(key != id && ( key == prev.id || !between(prev.id, id, key) )){
-         prev.addFile(files[i], ipaddrs[i]);
-      } else {
+      if(key == id || id == prev.id || between(prev.id, id, key)){ 
          files_left.push_back( files[i] );
          ips_left.push_back( ipaddrs[i] );
+      } else {
+         prev.addFile(files[i], ipaddrs[i]);
       }
    }
 
@@ -212,7 +212,7 @@ void * fixFiles(void * arg){
 // for nodes, we update ALL the finger table to ease grading
 void * fixFingers(void * arg){
     while( true ){
-        usleep(1000000 * STABILIZATION_INTERVAL);
+        usleep((int)(1000000 * STABILIZATION_INTERVAL));
 
         // lock
         pthread_mutex_lock(&ft_mutex);
