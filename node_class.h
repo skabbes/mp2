@@ -18,8 +18,8 @@ public:
     Node findSuccessorTo(int queryId);
     pair<vector<int>, vector<int> > getTable(int queryId);
     Node findPredecessor();
-    void addFile(string _filename, string _ipaddr);
 	int removeFile(string filename);
+    int addFile(string _filename, string _ipaddr);
     pair<int, string> findFile(string filename);
     pair<int, int> quit(int originalId);
 

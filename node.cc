@@ -107,7 +107,6 @@ void * fixFiles(void * arg){
    for(unsigned int i=0;i<files.size();i++){
       int key = SHA1(files[i], m);
       if(key != id && ( key == prev.id || !between(prev.id, id, key) )){
-         //cout << "Moving file " << files[i] << " with key " << key << " to node " << prev.id << endl;
          prev.addFile(files[i], ipaddrs[i]);
       } else {
          files_left.push_back( files[i] );
@@ -219,7 +218,6 @@ void * thread_conn_handler(void * arg){
     TOTAL_MESSAGES++;
 
     if( command == ADD_NODE){
-      cout << "NODE " << id << " got ADD_NODE";
        int size = readint(socket);
        for(int i=0; i<size; i++){
           int id = readint(socket);
@@ -231,28 +229,27 @@ void * thread_conn_handler(void * arg){
     else if( command == ADD_FILE){
       string filename = readstring(socket);
       string ipaddr = readstring(socket);
-      cout << "Node " << id << " got ADD_FILE " << filename << " " << ipaddr << endl;
 	
 		//Implement ADD_FILE
 		int key = SHA1(filename,m);
 		Node predNode = prev;	// find predecessor of the current node ID
 
+      int fileNodeId = -1;
 		// if the key is the same as the node ID or in between node Id and its predecessor
 		if (key == id || between(predNode.id,id,key))
 		{
+         fileNodeId = id;
 			files.push_back(filename.c_str());
 			ipaddrs.push_back(ipaddr.c_str());
-			printf("Add Key %i (%s) to node %i (self)\n", key, filename.c_str(), id);
 		} else {
 			// Otherwise, ask the closest node (recursion)
 			Node closestNode = closestFinger(key);
-			closestNode.addFile(filename, ipaddr);
+         fileNodeId = closestNode.addFile(filename, ipaddr);
 		}  
-		
+	   sendint(socket, fileNodeId);	
     }
     else if( command == DEL_FILE){
 	  string filename = readstring(socket);
-      cout << "Node " << id << " got DEL_FILE " << filename  << endl;
 
 	  int key = SHA1(filename, m);
 	  
