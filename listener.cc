@@ -150,10 +150,10 @@ void addNode(vector<int> ids){
 
     /* BAD, don't sleep, prevents concurrent operation */
 
-    int waitTime = ids.size() * 2;
+    double waitTime = ids.size() * .5;
 
     cout << "Waiting " << waitTime << " seconds for system to stabilize" << endl;
-    sleep( waitTime );
+    usleep( (int)(waitTime * 1000000) );
 
     for(unsigned int i=0; i<ids.size(); i++){
        int socket = setup_client(host, port);
@@ -229,7 +229,7 @@ void getTable(int id){
 }
 
 void quit(){
-    cout << "QUIT called, quitting in 5 seconds after connections finish"  << endl;
+    cout << "QUIT called, quitting in 1 second after connections finish"  << endl;
 
     int socket = setup_client(host, port);
     sendint(socket, QUIT);
@@ -240,5 +240,5 @@ void quit(){
     close(socket);
     cout << "TOTAL MESSAGES: " << total << endl;
 
-    sleep(5);
+    sleep(1);
 }

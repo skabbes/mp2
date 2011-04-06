@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include <arpa/inet.h>
+#include <time.h>
 
 #include "socket.h"
 #include "sha1.h"
@@ -86,14 +87,14 @@ void * stabilizer(void * arg){
 
 void * fixFiles(void * arg){
    // wait for nodes to be added completely to system
-   sleep(1);
+   usleep(250000);
 
    vector<string> files_left;
    vector<string> ips_left;
 
    for(unsigned int i=0;i<files.size();i++){
       int key = SHA1(files[i], m);
-      if( key == prev.id || !between(prev.id, id, key) ){
+      if(key != id && ( key == prev.id || !between(prev.id, id, key) )){
          cout << "Moving file " << files[i] << " with key " << key << " to node " << prev.id << endl;
          prev.addFile(files[i], ipaddrs[i]);
       } else {
@@ -114,6 +115,10 @@ void * fixFingers(void * arg){
         // lock
         pthread_mutex_lock(&ft_mutex);
 
+        // we can reduce the number of messages sent by implementing random sending
+        // we left it as NOT random to ensure our finger tables will be correct
+        //int i = (int)( ft.size() * rand() / (RAND_MAX + 1.0) );
+
         for(unsigned int i=0;i<ft.size();i++){
            int fingerId = (id + (1 << i)) % (1 << m);
 
@@ -122,10 +127,10 @@ void * fixFingers(void * arg){
 
            if( id == closest.id || closest.id == fingerId ){
                ft[i] = closest;
-               continue;
+           } else {
+               ft[i] = closest.findSuccessorTo( fingerId );
            }
 
-           ft[i] = closest.findSuccessorTo( fingerId );
         }
 
         /*
@@ -321,7 +326,7 @@ void * thread_conn_handler(void * arg){
             }
 
             if( them.id != id ){
-                // move files around in here
+                prev = them;
                 startThread(fixFiles, NULL);
             }
             prev = them;
@@ -383,6 +388,9 @@ int main(int argc, char ** argv){
        cerr << "Usage: " << argv[0] << " <m> <id> <port> [<introducer-port>]" << endl;
        return EXIT_FAILURE;
     }
+
+    // seed our RNG
+    srand( time(NULL) );
     
     // grab parameters
     m = atoi(argv[1]);
