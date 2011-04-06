@@ -16,7 +16,7 @@ public:
     Node();
     Node(int id, int port);
     Node findSuccessorTo(int queryId);
-    vector<int> getTable(int queryId);
+    pair<vector<int>, vector<int> > getTable(int queryId);
     Node findPredecessor();
     void addFile(string _filename, string _ipaddr);
 	 void removeFile(string filename);

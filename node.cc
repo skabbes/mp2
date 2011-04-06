@@ -279,7 +279,7 @@ void * thread_conn_handler(void * arg){
 			cout << "File: " << filename << " has been deleted from node#" << id << "."<<endl;
 		} else {
 			// display error message
-			cout << "Error: " << filename << " cannot be found!" << endl;
+			cout << "[Error]: " << filename << " cannot be found!" << endl;
 		}
 		
 	  } else {
@@ -341,22 +341,35 @@ void * thread_conn_handler(void * arg){
       cout << "Node " << id << " got GET_TABLE " <<  queryId  << endl;
       Node closest = closestFinger(queryId);
 
-      vector<int> table;
-      if( queryId == id ){
-         for(unsigned int i=0;i<ft.size();i++){
-            table.push_back( ft[i].id );
+      pair< vector<int>, vector<int> > returnValue;
+		// if found
+      if( queryId == id )
+	  {
+         for(unsigned int i=0;i<ft.size();i++)
+		 {
+            returnValue.first.push_back( ft[i].id );
+         }
+		 
+		 for(unsigned int i=0;i<files.size();i++)
+		 {
+            returnValue.second.push_back( SHA1(files[i], m) );
          }
       } else if( between(id, next.id, queryId) ){
-         cout << "ASDFASDFASASDFASDFASDFASDFasdf " << queryId << " doesn't exist" << endl;
-         vector<int> temp;
-         table = temp;
+         cout << "[Error]: " << queryId << " doesn't exist" << endl;
+		 vector<int> temp;
+         returnValue = pair< vector<int>, vector<int> >(temp, temp);
       }else {
-         table = closest.getTable(queryId);
+         returnValue = closest.getTable(queryId);
       }
 
-      sendint(socket, ft.size());
-      for(unsigned int i=0;i<table.size();i++){
-         sendint(socket, table[i]);
+      sendint(socket, returnValue.first.size());
+      for(unsigned int i=0;i<returnValue.first.size();i++){
+         sendint(socket, returnValue.first[i]);
+      }
+	  
+	  sendint(socket, returnValue.second.size());
+      for(unsigned int i=0;i<returnValue.second.size();i++){
+         sendint(socket, returnValue.second[i] );
       }
 
     }
