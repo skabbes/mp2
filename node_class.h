@@ -22,7 +22,7 @@ public:
     int addFile(string _filename, string _ipaddr);
     pair<int, string> findFile(string filename);
     pair<int, int> quit(int originalId);
-
+    void addNodes(vector<int> ids);
     void notify(int myId, int myPort);
     void setId(int id);
     void setPort(int port);

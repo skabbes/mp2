@@ -56,6 +56,17 @@ pair< vector<int>, vector<int> > Node::getTable(int queryId){
    return pair< vector<int>, vector<int> >(table, keys);
 }
 
+void Node::addNodes(vector<int> ids){
+   int socket = setup_client("localhost", port);
+   sendint(socket, ADD_NODE);
+   sendint(socket, ids.size());
+
+   for(unsigned int i=0;i<ids.size();i++){
+       sendint(socket, ids[i]);
+   }
+   close(socket);
+}
+
 pair<int, int> Node::quit(int originalId){
    int socket = setup_client("localhost", port);
    sendint(socket, QUIT);

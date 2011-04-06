@@ -3,49 +3,39 @@
 #include <vector>
 #include <sstream>
 
-// for sleep function
 #include <cstdlib>
 #include <cstdio>
 #include <unistd.h>
-#include <sys/socket.h>
 
-#include "socket.h"
 #include "sha1.h"
 #include "messages.h"
+#include "node_class.h"
 
 using namespace std;
 
 // function definitions
 int main(int argc, char ** argv);
+
+// threaded command handler
 void * processCommand(void * arg);
-void addNode(vector<int> ids);
+
+// auxiliary functions
+pthread_t startThread( void * (*functor)(void *), void * arg );
+void printFingerTable( int id, vector<int> const & table );
+void printKeys( int id, vector<int> const & table );
+void waitForThreads(vector<pthread_t> threads);
+
+// funcitons which handle the individual commands
 void addFile(string filename, string ip);
+void addNode(vector<int> ids);
 void delFile(string filename);
 void findFile(string filename);
 void getTable(int id);
 void quit();
-void startThread( void * (*functor)(void *), void * arg );
 
 // global variables definitions
-char * host;
-char * port;
-int m;
-
-void startThread( void * (*functor)(void *), void * arg ){
-    pthread_attr_t DetachedAttr;
-    pthread_attr_init(&DetachedAttr);
-    pthread_attr_setdetachstate(&DetachedAttr, PTHREAD_CREATE_DETACHED);
-
-    pthread_t handler;
-    if( pthread_create(&handler, &DetachedAttr, functor, arg) ){
-        free(arg);
-        perror("pthread_create");
-    }
-    pthread_detach(handler);
-
-    // free resources for detached attribute
-    pthread_attr_destroy(&DetachedAttr);
-}
+Node introducer;
+int M;
 
 int main(int argc, char ** argv){
 
@@ -54,13 +44,16 @@ int main(int argc, char ** argv){
        return EXIT_FAILURE;
     }
 
-    m = atoi(argv[1]);
-    host = argv[2];
-    port = argv[3];
+    M = atoi(argv[1]);
+    char * host = argv[2];
+    int port = atoi(argv[3]);
+    introducer = Node(0, port);
 
+    bool shouldQuit = false;
+
+    vector<pthread_t> threads;
 
     // read commands in line by line and process them
-    bool shouldQuit = false;
     while( cin && !shouldQuit ){
         string * input = new string();
         getline(cin, *input);
@@ -71,23 +64,73 @@ int main(int argc, char ** argv){
         string command;
         is >> command;
 
+        if( cin.eof() ) continue;
+
         if( command  == "QUIT" ){
            shouldQuit = true;
         } else if( command  == "SLEEP" ){
            int seconds; 
            is >> seconds;
+
+           waitForThreads(threads);
+           threads.empty();
+
            cout << "sleeping for " << seconds << endl;
            sleep(seconds); 
         } else {
-           // start a thread so not to block other operations (handle concurrently)
-           startThread(processCommand, input);
+           // start a thread so not to block other operations (handle concurrency)
+           threads.push_back( startThread(processCommand, input) );
         }
     }
+
+    shouldQuit = true;
+
+    waitForThreads(threads);
+    threads.empty();
 
     quit();
     return 0;
 }
 
+void waitForThreads(vector<pthread_t> threads){
+    for(unsigned int i=0;i<threads.size();i++){
+        pthread_join( threads[i], NULL);
+    }
+}
+
+// prints a finger table for a node with ID == id
+void printFingerTable( int id, vector<int> const & table ){
+   cout << "Finger table for node " << id << endl;
+   cout << "\ti\tf[i]" << endl;
+   for(unsigned int j=0;j<table.size();j++){
+     cout << "\t" << j << "\t" << table[j] << endl;
+   }
+}
+
+// prints the keys for a node with ID == id
+void printKeys( int id, vector<int> const & keys ){
+	   cout << "Keys at node " << id << " ";
+	   cout << "(";
+	   for(unsigned int j=0;j<keys.size();j++){
+         if( j != 0 ){
+            cout << ", ";
+         }
+         cout << keys[j];
+       }
+	   cout << ")" << endl;
+}
+
+pthread_t startThread( void * (*functor)(void *), void * arg ){
+    pthread_t handler;
+    if( pthread_create(&handler, NULL, functor, arg) ){
+        free(arg);
+        perror("pthread_create");
+    }
+    return handler;
+}
+
+
+// threaded command dispatcher
 void * processCommand(void * arg){
     string * temp = (string *)arg;
     string input = *temp;
@@ -135,21 +178,10 @@ void * processCommand(void * arg){
     return NULL;
 }
 
+// add a nodes to the system, then wait for the system to stabilize and print
+// its finger table
 void addNode(vector<int> ids){
-    cout << "ADD_NODE called with";
-    for(unsigned int i=0;i< ids.size();i++){
-       cout << " " << ids[i];
-    }
-    cout << endl;
-
-    int socket = setup_client(host, port);
-    sendint(socket, ADD_NODE);
-    sendint(socket, ids.size() );
-
-    for(unsigned int i=0; i<ids.size(); i++){
-       sendint(socket, ids[i]);
-    }
-    close(socket);
+    introducer.addNodes(ids);
 
     double waitTime = ids.size() * .5;
 
@@ -157,117 +189,65 @@ void addNode(vector<int> ids){
     usleep( (int)(waitTime * 1000000) );
 
     for(unsigned int i=0; i<ids.size(); i++){
-       int socket = setup_client(host, port);
-       sendint(socket, GET_TABLE);
-       sendint(socket, ids[i]);
-
-       int size = readint(socket);
-       cout << "Finger table for node " << ids[i] << endl;
-       cout << "\ti\tf[i]" << endl;
-       for(int j=0;j<size;j++){
-         int temp = readint(socket);
-         cout << "\t" << j << "\t" << temp << endl;
-       }
-       close(socket);
+       getTable(ids[i]);
     }
 
 }
 
+// add a file into the system with attribute == ip
 void addFile(string filename, string ip){
-	
-    int socket = setup_client(host, port);
-    sendint(socket, ADD_FILE);
-
-    sendstring(socket, filename);
-    sendstring(socket, ip);
-
-    int fileNodeId = readint(socket);
-
-    cout << "Added file " << filename << " (" << SHA1(filename, m) <<  ") to Node " << fileNodeId << endl; 
-    close(socket);
+    int fileNodeId = introducer.addFile(filename, ip);	
+    cout << "Added file " << filename << " (" << SHA1(filename, M) <<  ") to Node " << fileNodeId << endl; 
 }
 
+// delete a file from the system, or print an error on failure
 void delFile(string filename){
-    cout << "DEL_FILE called with " << filename << endl;
-    int socket = setup_client(host, port);
-    sendint(socket, DEL_FILE);
-    sendstring(socket, filename);
-	
-	int result = readint(socket);
-	
-	if (result == FILE_NOT_FOUND)
-	{
-		cout << "[Error]:" << filename << " not found !" << endl;
-	} else if (result == FILE_FOUND)
-	{
-		cout << filename << " with key " << SHA1(filename,m) << " has been deleted from node# " << readint(socket) << endl;
+    int key = SHA1(filename, M);
+    int fileNodeId = introducer.removeFile(filename);
+	if (fileNodeId == -1){
+		cout << "[Error]:" << filename << " (" << key << ") not found!" << endl;
+	} else {
+		cout << filename << " (" << key << ") has been deleted from Node " << fileNodeId << endl;
 	}
-    close(socket);
 }
 
+// find a file in the system, or print an error on failure
 void findFile(string filename){
-    cout << "FIND_FILE called with " << filename << endl;
-    int socket = setup_client(host, port);
-    sendint(socket, FIND_FILE);
-    sendstring(socket, filename);
+    pair<int, string> p = introducer.findFile(filename);
+    int fileNodeId = p.first;
+    string ip = p.second;
+    int key = SHA1(filename, M);
 
-    int result = readint(socket);
-    if( result == FILE_FOUND ){
-        int fileNodeId = readint(socket);
-        string ip = readstring(socket);
-        cout << filename << " with key " << SHA1(filename,m) << " found at Node " << fileNodeId << " : " << ip << endl;
+    // not found
+    if( fileNodeId == -1 ){
+        cout << filename << " (" << key << ") not found." << endl;
     } else {
-        cout << filename << " not found " << endl;
+        cout << filename << " (" << key << ") found at Node " << fileNodeId << " : " << ip << endl;
     }
-
-    close(socket);
 }
 
+// get (and print) the finger table at a node
 void getTable(int id){
-    cout << "GET_TABLE called with " << id << endl;
-    int socket = setup_client(host, port);
-    sendint(socket, GET_TABLE);
-    sendint(socket, id);
+    pair< vector<int>, vector<int> > p = introducer.getTable(id);
+    vector<int> table = p.first;
+    vector<int> keys = p.second;
 
-    int size = readint(socket);
-    if( size == 0 ){
+    if( table.size() == 0 ){
        cout << "Node " << id << " doesn't yet exist" << endl;
     } else {
-	
-	   cout << "Finger table for node " << id << endl;
-       cout << "\ti\tf[i]" << endl;
-	   
-       for(int j=0;j<size;j++){
-         int temp = readint(socket);
-         cout << "\t" << j << "\t" << temp << endl;
-       }
-	   
-	   cout << "Keys at node " << id << " ";
-	   int keySize = readint(socket);
-	   cout << "(";
-	   for(int j=0;j<keySize;j++){
-         int key = readint(socket);
-         cout << key << ", ";
-       }
-	   cout << ")" << endl;
-
+       printFingerTable(id, table);
+       printKeys(id, keys);
     }
-    close(socket);
 }
 
+// Send a quit message to all nodes in the system
 void quit(){
-    int socket = setup_client(host, port);
-    sendint(socket, QUIT);
-    // designate the origin of the quit to come from node 0 (Node which we're connecting to)
-    sendint(socket, 0);
 
-    int totalMessages = readint(socket);
-    int stabilizerMessages = readint(socket);
-    close(socket);
+    pair<int, int> p = introducer.quit( introducer.id );
+    int totalMessages = p.first;
+    int stabilizerMessages = p.second;
 
-    cout << "QUIT called, quitting in 1 second after connections finish"  << endl;
     cout << "TOTAL MESSAGES: " << totalMessages << endl;
     cout << "STABLILZER MESSAGES: " << stabilizerMessages << endl;
     cout << "DIFFERENCE : " << totalMessages - stabilizerMessages << endl;
-    sleep(1);
 }

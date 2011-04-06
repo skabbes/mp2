@@ -4,7 +4,7 @@ CFLAGS = -g -Wall -O0
 LDFLAGS = -g -lpthread
 
 LISTENER = listener 
-LISTENER_OBJ = listener.o socket.o sha1.o
+LISTENER_OBJ = listener.o socket.o sha1.o node_class.o
 
 CHORD_SYS = chord_sys 
 CHORD_SYS_OBJ = chord_sys.o
