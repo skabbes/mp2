@@ -67,8 +67,12 @@ void * stabilizer(void * arg){
         if( id == next.id || between(id, next.id, x.id) ){
             next = x;
             ft[0] = next;
-            cout << "Node " << id << " next is " << next.id << endl;
+
+            if( next.id != id){
+                cout << "Node " << id << " next is " << next.id << endl;
+            }
         }
+
         next.notify(id, port);
 
         // unlock
@@ -235,7 +239,49 @@ void * thread_conn_handler(void * arg){
       cout << "Node " << id << " got DEL_FILE " << readstring(socket)  << endl;
     }
     else if( command == FIND_FILE){
-      cout << "Node " << id << " got FIND_FILE " << readstring(socket)  << endl;
+      string filename = readstring(socket);
+      cout << "Node " << id << " got FIND_FILE " << filename  << endl;
+      int key = SHA1(filename, m);
+
+      bool found = false;
+      string ip = "";
+      int fileNodeId = -1;
+
+      cout << filename << " has key " << key << " at node " << id << endl;
+
+      if( key == id || between(prev.id, id, key) ){
+          fileNodeId = id;
+
+          // look for this file
+          for(unsigned int i=0;i<files.size();i++){
+              if(files[i] == filename){
+                  found = true;
+                  ip = ipaddrs[i];
+                  cout << "Node " << id << " has file " << filename << endl;
+                  break;
+              }
+          }
+      } else {
+          cout << "Node " << id << " doesn't has file " << filename << endl;
+          Node closest = closestFinger(key);
+          pair<int, string> result = closest.findFile(filename);
+          if(result.first == -1){
+              found = false;
+          } else {
+                found = true;
+                fileNodeId = result.first;
+                ip = result.second;
+          }
+      }
+
+      if( found ){
+          sendint(socket, FILE_FOUND);
+          sendint(socket, fileNodeId);
+          sendstring(socket, ip);
+      } else {
+          sendint(socket, FILE_NOT_FOUND);
+      }
+
     }
     else if( command == GET_TABLE){
 
@@ -267,16 +313,22 @@ void * thread_conn_handler(void * arg){
         int theirPort = readint(socket);
         Node them(theirId, theirPort);
 
+
         if( prev.id == id || between(prev.id, id, them.id) ){
-            if( them.id != id ){
-               // move files around in here
-               startThread(fixFiles, NULL);
+
+            if( prev.id != id){
+                cout << "Node " << id << " prev is " << prev.id << endl;
             }
 
-            // actualy update previous pointer
+            if( them.id != id ){
+                // move files around in here
+                startThread(fixFiles, NULL);
+            }
             prev = them;
-            cout << "Node " << id << " prev is " << prev.id << endl;
         }
+
+        // send an ack...
+        sendint(socket, 0);
     }
     else if( command == FIND_SUCCESSOR ){
 

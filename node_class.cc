@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <utility>
+
 #include <arpa/inet.h>
 
 #include "node_class.h"
@@ -63,6 +65,9 @@ void Node::notify(int myId, int myPort){
    sendint(socket, NOTIFY);
    sendint(socket, myId);
    sendint(socket, myPort);
+
+   int ack = readint(socket);
+   ack++;
    close(socket);
 }
 
@@ -92,6 +97,27 @@ void Node::addFile(string filename, string ipaddr)
    sendstring(socket, ipaddr);
 
    close(socket);
+}
+
+// if the id == -1, then let that denote an error (no file found)
+pair<int, string> Node::findFile(string filename){
+   //open up a connection to this node, and return its successor
+   int socket = setup_client("localhost", port);
+
+   sendint(socket, FIND_FILE);
+   sendstring(socket, filename);
+
+   int id = -1;
+   string ip = "";
+
+   int result = readint(socket);
+   if( result == FILE_FOUND ){
+       id = readint(socket);
+       ip = readstring(socket);
+   } 
+
+   close(socket);
+   return pair<int, string>(id, ip);
 }
 
 void Node::setId(int _id){

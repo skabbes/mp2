@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <utility>
 using namespace std;
 
 class Node{
@@ -18,6 +19,7 @@ public:
     vector<int> getTable(int queryId);
     Node findPredecessor();
     void addFile(string _filename, string _ipaddr);
+    pair<int, string> findFile(string filename);
     int quit(int originalId);
 
     void notify(int myId, int myPort);

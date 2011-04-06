@@ -9,6 +9,8 @@ enum {
     QUIT,
     FIND_SUCCESSOR,
     FIND_PREDECESSOR,
-    NOTIFY 
+    NOTIFY,
+    FILE_FOUND,
+    FILE_NOT_FOUND    
 };
 #endif

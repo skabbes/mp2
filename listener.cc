@@ -197,7 +197,18 @@ void findFile(string filename){
     int socket = setup_client(host, port);
     sendint(socket, FIND_FILE);
     sendstring(socket, filename);
-    shutdown(socket, 1);
+
+    int result = readint(socket);
+    if( result == FILE_FOUND ){
+        int fileNodeId = readint(socket);
+        string ip = readstring(socket);
+        cout << filename << " found at Node " << fileNodeId << " : " << ip << endl;
+    } else {
+        cout << filename << " not found " << endl;
+        cout << "error code " << result;
+    }
+
+    close(socket);
 }
 
 void getTable(int id){
@@ -209,6 +220,10 @@ void getTable(int id){
     int size = readint(socket);
     if( size == 0 ){
        cout << "Node " << id << " doesn't yet exist" << endl;
+    } else {
+        for(int i=0;i<size;i++){
+            cout << readint(socket) << endl;
+        }
     }
     close(socket);
 }
