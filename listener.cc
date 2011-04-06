@@ -174,6 +174,7 @@ void addNode(vector<int> ids){
 }
 
 void addFile(string filename, string ip){
+	
     int socket = setup_client(host, port);
     sendint(socket, ADD_FILE);
 
@@ -214,7 +215,7 @@ void findFile(string filename){
     if( result == FILE_FOUND ){
         int fileNodeId = readint(socket);
         string ip = readstring(socket);
-        cout << filename << " found at Node " << fileNodeId << " : " << ip << endl;
+        cout << filename << " with key " << SHA1(filename,m) << " found at Node " << fileNodeId << " : " << ip << endl;
     } else {
         cout << filename << " not found " << endl;
     }
